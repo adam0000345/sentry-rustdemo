@@ -2,6 +2,8 @@ extern crate actix_web;
 extern crate sentry;
 extern crate sentry_actix;
 
+
+
 use std::num::ParseIntError;
 
 
@@ -10,6 +12,9 @@ use std::io;
 use std::collections::HashMap;
 use std::process;
 use sentry::integrations::failure::capture_error;
+use actix_web::{http};
+
+
 use sentry::integrations::panic::register_panic_handler;
 
 
@@ -21,6 +26,7 @@ use sentry_actix::SentryMiddleware;
 
 use actix_web::Responder;
 
+mod handlers;
 
 
 // My version
@@ -30,66 +36,54 @@ fn multiply_new(first_number_str: &str, second_number_str: &str) -> Result<i32, 
     Ok(first_number * second_number)
 }
 
-/* async */ fn handled_new(_req: ()) -> Result<(), Error> {
-    let result = match multiply_new("t", "2") {
+fn handled_new(_req: &HttpRequest) -> Result<String, Error> {
+    let first = "t";
+    let second = "2";
+    let result = match multiply_new(first, second) {
         Ok(result) => result,
         Err(err) => {
-            capture_error(&err);
-            // Err(err); // This is not needed
-            return Ok(());
+            // Foo is the ParseIntError turned into a failure::Error.
+            let foo = err.into();
+            capture_error(&foo);
+            return Ok("try again".to_string());
         }
     };
-    return Ok(());
-}
-
-fn guess(n: i32) -> bool {
-    if n < 1 || n > 10 {
-        panic!("Invalid number: {}", n);
-    }
-    n == 5
-}
-
-async fn handled(_req: &HttpRequest) -> Result<(), Error> {
-
-    let result = match guess(11) {
-        Ok(result) => result,
-        Err(err) => {
-           capture_error(&err);
-           Err(err);
-           return http;
-        }
-    };
-
-    return HttpResponse::Ok().body("Multiplication Was");
+    // Not sure what the plan is for the 'result' variable.
+    return Ok(format!("{} * {} => {}", first, second, result))
+    
 
 }
 
+/* fn process_order(inventory):
+    global Inventory
+    tempInventory = Inventory
+    for item in cart:
+        if Inventory[item['id']] <= 0:
+            raise Exception("Not enough inventory for " + item['id'])
+        else:
+            tempInventory[item['id']] -= 1
+            print 'Success: ' + item['id'] + ' was purchased, remaining stock is ' + str(tempInventory[item['id']])
+    Inventory = tempInventory  */
 
 
+
+fn checkout(_req: &HttpRequest) -> Result<String, Error> {
     
+    let mut inventory = HashMap::new();
 
+    inventory.insert("wrench", "1");
+    inventory.insert("nails", "1");
+    inventory.insert("hammer", "1");
 
-// Guess a number between 1 and 10.
-// If it matches the number we had in mind, return true. Else, return false.
-//fn guessunhandled(n: i32) -> bool {
-////    if n < 1 || n > 10 {
-       //print "Done"
-  //  }
- //   n == 5
-//}
-
-//fn unhandled(_req: &HttpRequest) {
+    Err(io::Error::new(io::ErrorKind::Other, "An error happens here").into())
+    order = json.loads(request.data)
+    print "Processing order for: " + order["email"]
+    cart = order["cart"]
     
- //   guessundandled(11);
+    process_order(cart)
 
-//}
-
-//fn checkout(_req: &HttpRequest) -> Result<String, Error> {
-    
- //   return "Success"
-//}
-
-
+    return "Success"
+}
 
 fn main() {
 
@@ -102,13 +96,12 @@ fn main() {
           //|r| r.f(handled)).resource("/unhandled", |r| r.f(unhandled))
         //.resource("/checkout", |r| r.f(checkout))
     server::new(|| {
-        App::new().middleware(SentryMiddleware::new())
-        .resource("/handled", |r| r.f(handled))}).bind("127.0.0.1:3001")
+        App::new().middleware(SentryMiddleware::new()).resource("/", |r| r.method(http::Method::POST).with(index))
+        .resource("/handled_new", |r| r.f(handled_new))}).bind("127.0.0.1:3001")
         .unwrap()
         .run();
 
         sentry::integrations::panic::register_panic_handler();
 
-        // Sentry will capture this
-        panic!("Everything is on fire!");
+        
 }
