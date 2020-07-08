@@ -13,6 +13,8 @@ use std::collections::HashMap;
 use std::process;
 use sentry::integrations::failure::capture_error;
 use actix_web::{http};
+use actix_web::Json;
+use actix_web::http::Method;
 
 
 use sentry::integrations::panic::register_panic_handler;
@@ -26,7 +28,7 @@ use sentry_actix::SentryMiddleware;
 
 use actix_web::Responder;
 
-mod handlers;
+
 
 
 // My version
@@ -36,7 +38,7 @@ fn multiply_new(first_number_str: &str, second_number_str: &str) -> Result<i32, 
     Ok(first_number * second_number)
 }
 
-fn handled_new(_req: &HttpRequest) -> Result<String, Error> {
+fn handled_new(_req: &HttpRequest) -> HttpResponse {
     let first = "t";
     let second = "2";
     let result = match multiply_new(first, second) {
@@ -45,45 +47,71 @@ fn handled_new(_req: &HttpRequest) -> Result<String, Error> {
             // Foo is the ParseIntError turned into a failure::Error.
             let foo = err.into();
             capture_error(&foo);
-            return Ok("try again".to_string());
+            let result: HttpResponse = "try again".to_string().into();
+
+            return result;
         }
     };
     // Not sure what the plan is for the 'result' variable.
-    return Ok(format!("{} * {} => {}", first, second, result))
-    
+    let result: HttpResponse = (format!("{} * {} => {}", first, second, result)).into();
+
+    return result;
+    //return Ok(format!("{} * {} => {}", first, second, result))
+
 
 }
 
-/* fn process_order(inventory):
-    global Inventory
-    tempInventory = Inventory
-    for item in cart:
-        if Inventory[item['id']] <= 0:
-            raise Exception("Not enough inventory for " + item['id'])
-        else:
-            tempInventory[item['id']] -= 1
-            print 'Success: ' + item['id'] + ' was purchased, remaining stock is ' + str(tempInventory[item['id']])
-    Inventory = tempInventory  */
+// fn process_order(inventory):
+//     global Inventory
+//     tempInventory = Inventory
+//     for item in cart:
+//         if Inventory[item['id']] <= 0:
+//             raise Exception("Not enough inventory for " + item['id'])
+//         else:
+//             tempInventory[item['id']] -= 1
+//             //print 'Success: ' + item['id'] + ' was purchased, remaining stock is ' + str(tempInventory[item['id']])
+//     Inventory = tempInventory 
 
-
-
-fn checkout(_req: &HttpRequest) -> Result<String, Error> {
-    
-    let mut inventory = HashMap::new();
-
-    inventory.insert("wrench", "1");
-    inventory.insert("nails", "1");
-    inventory.insert("hammer", "1");
-
-    Err(io::Error::new(io::ErrorKind::Other, "An error happens here").into())
-    order = json.loads(request.data)
-    print "Processing order for: " + order["email"]
-    cart = order["cart"]
-    
-    process_order(cart)
-
-    return "Success"
+struct CardSubmittedPayload {
+    card_id: i64,
 }
+
+
+fn checkout(body: Json<CardSubmittedPayload>, req: HttpRequest) -> HttpResponse {
+
+    let card_id = body.card_id;
+
+    println!("card it:   {}", card_id);
+
+    //println!("HERE IS THE REQUET");
+    //println!("{:?}", _req);
+    
+    let foo: HttpResponse = "success".to_string().into();
+    return foo;
+    //HttpResponse::new(http::StatusCode::from_u16(200u16).unwrap());
+
+}
+
+    //return foo;
+
+   
+    //return OK(_req.to_string());
+    
+    //let mut inventory = HashMap::new();
+
+    //inventory.insert("wrench", "1");
+    //inventory.insert("nails", "1");
+    //inventory.insert("hammer", "1");
+
+    //order = json.loads(_req.body());
+    
+    //Err(io::Error::new(io::ErrorKind::Other, "An error happens here").into());
+    //order = json.loads(&HttpRequest.data);
+    //print "Processing order for: " + order["email"]
+    //cart = order["cart"]
+    
+    //process_order(cart);
+
 
 fn main() {
 
@@ -96,11 +124,13 @@ fn main() {
           //|r| r.f(handled)).resource("/unhandled", |r| r.f(unhandled))
         //.resource("/checkout", |r| r.f(checkout))
     server::new(|| {
-        App::new().middleware(SentryMiddleware::new()).resource("/", |r| r.method(http::Method::POST).with(index))
-        .resource("/handled_new", |r| r.f(handled_new))}).bind("127.0.0.1:3001")
+        App::new().middleware(SentryMiddleware::new())
+        .resource("/handled_new",|r| r.method(http::Method::GET).f(handled_new))
+        .resource("/checkout", |r| r.method(http::Method::POST).with(checkout))}).bind("127.0.0.1:3001")
         .unwrap()
         .run();
 
+        //.resource("/checkout", |r| r.method(http::Method::POST).f(checkout))}).bind("127.0.0.1:3001").unwrap()
         sentry::integrations::panic::register_panic_handler();
 
         
