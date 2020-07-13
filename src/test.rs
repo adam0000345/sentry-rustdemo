@@ -1,6 +1,7 @@
 extern crate actix_web;
 extern crate sentry;
 extern crate sentry_actix;
+#[macro_use]
 extern crate failure;
 
 #[macro_use]
@@ -23,6 +24,13 @@ use actix_web::http::Method;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::to_string;
+use serde_json::from_str;
+//use serde_json::to_value;
+use sentry::protocol::value::to_value;
+use sentry::protocol::value::Value;
+
+
+
 
 
 use std::sync::Mutex;
@@ -85,6 +93,12 @@ fn handled_new(_req: &HttpRequest) -> HttpResponse {
 
 }
 
+fn fakedatabseapp(_req: &HttpRequest) -> HttpResponse{
+
+    panic!("Unhandled request!");
+ 
+}
+
 
 #[derive(Deserialize, Clone, Debug)]
 struct CardSubmittedPayload {
@@ -136,10 +150,10 @@ fn process_order(cart: &Vec<Item>) -> HttpResponse {
             string.push_str("Not enough inventory for ");
             string.push_str(&cartitem.id);
 
-
+            capture_error(&format_err!("Error: {}", string));
             
             let result: HttpResponse = string.to_string().into();
-    
+            
             return result;
             
             
@@ -204,7 +218,10 @@ fn checkout(req: HttpRequest, body: Json<CheckoutPayload>) -> HttpResponse {
 
         string.push_str(req.headers().get("inventory").unwrap().to_str().unwrap());
 
-        scope.set_tag("inventory", string);
+        let something:Value = from_str(&string).unwrap();
+
+
+        scope.set_extra("inventory", to_value((&string)).unwrap());
 
     });
     
@@ -225,6 +242,7 @@ fn main() {
     server::new(|| {
         App::new().middleware(SentryMiddleware::new())
         .resource("/handled_new",|r| r.method(http::Method::GET).f(handled_new))
+        .resource("/unhandled",|r| r.method(http::Method::GET).f(fakedatabseapp))
         .resource("/checkout", |r| r.method(http::Method::POST).with(checkout))}).bind("127.0.0.1:3001")
         .unwrap()
         .run();
