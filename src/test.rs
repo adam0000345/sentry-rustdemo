@@ -40,6 +40,8 @@ use sentry::integrations::panic::register_panic_handler;
 
 
 lazy_static! {
+
+    #[derive(Copy, Deserialize, Clone, Debug)]
     static ref HASHMAP: Mutex<HashMap<&'static str, u32>> = {
         let mut Inventory = HashMap::new();
         Inventory.insert("wrench", 1);
@@ -150,9 +152,25 @@ fn process_order(cart: &Vec<Item>) -> HttpResponse {
             string.push_str("Not enough inventory for ");
             string.push_str(&cartitem.id);
 
+            configure_scope(|scope| {
+                
+        
+                //string = String::new();
+        
+                //string.push_str(req.headers().get("inventory").unwrap().to_str().unwrap());
+        
+                //let something:Value = from_str(HASHMAP).unwrap();
+        
+        
+                scope.set_extra("inventory", to_value(map.clone()).unwrap());
+        
+            });
+
             capture_error(&format_err!("Error: {}", string));
             
             let result: HttpResponse = string.to_string().into();
+
+            
             
             return result;
             
@@ -216,12 +234,7 @@ fn checkout(req: HttpRequest, body: Json<CheckoutPayload>) -> HttpResponse {
 
         string = String::new();
 
-        string.push_str(req.headers().get("inventory").unwrap().to_str().unwrap());
-
-        let something:Value = from_str(&string).unwrap();
-
-
-        scope.set_extra("inventory", to_value((&string)).unwrap());
+        
 
     });
     
