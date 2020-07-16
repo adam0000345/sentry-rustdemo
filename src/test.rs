@@ -12,22 +12,16 @@ use std::num::ParseIntError;
 
 
 use std::env;
-use std::io;
 use std::collections::HashMap;
-use std::process;
 use sentry::integrations::failure::capture_error;
 use sentry::{configure_scope, User};
 use actix_web::{http};
 use actix_web::Json;
 use actix_web::Result;
-use actix_web::http::Method;
 use serde::Deserialize;
 use serde::Serialize;
-use serde_json::to_string;
-use serde_json::from_str;
-//use serde_json::to_value;
 use sentry::protocol::value::to_value;
-use sentry::protocol::value::Value;
+
 
 
 
@@ -48,22 +42,14 @@ lazy_static! {
         Inventory.insert("nails", 1);
         Inventory.insert("hammer", 1);
         Mutex::new(Inventory)
-    };    
+    };
 }
 
 
-
-
-
-use actix_web::{server, App, Error, HttpRequest, http::StatusCode, HttpResponse};
+use actix_web::{server, App, HttpRequest, HttpResponse};
 use sentry_actix::SentryMiddleware;
 
-use actix_web::Responder;
 
-
-
-
-// My version
 fn multiply_new(first_number_str: &str, second_number_str: &str) -> Result<i32, ParseIntError> {
     let first_number: i32 = first_number_str.parse()?;
     let second_number: i32 = second_number_str.parse()?;
@@ -76,7 +62,6 @@ fn handled_new(_req: &HttpRequest) -> HttpResponse {
     let result = match multiply_new(first, second) {
         Ok(result) => result,
         Err(err) => {
-            // Foo is the ParseIntError turned into a failure::Error.
             let foo = err.into();
             capture_error(&foo);
             let result: HttpResponse = "try again".to_string().into();
@@ -86,11 +71,11 @@ fn handled_new(_req: &HttpRequest) -> HttpResponse {
             return result;
         }
     };
-    // Not sure what the plan is for the 'result' variable.
+    
     let result: HttpResponse = (format!("{} * {} => {}", first, second, result)).into();
 
     return result;
-    //return Ok(format!("{} * {} => {}", first, second, result))
+  
 
 
 }
@@ -134,32 +119,19 @@ fn process_order(cart: &Vec<Item>) -> HttpResponse {
     let mut map = HASHMAP.lock().unwrap();
     println!("The entry for `0` is \"{:?}\".", map.get("foo"));
 
-    //println!("There're {} entries in map\".", map.list);
-
   
 
     for cartitem in cart.iter() {
 
-        println!("CART ITEM HERE");
-        dbg!(cartitem);
         
         if map.get(cartitem.id.as_str()).map(|id| id <= &0).unwrap_or(false) {
 
-            
-            println!("OUT OF ITEM HIT");
 
             let mut string = String::new();
             string.push_str("Not enough inventory for ");
             string.push_str(&cartitem.id);
 
             configure_scope(|scope| {
-                
-        
-                //string = String::new();
-        
-                //string.push_str(req.headers().get("inventory").unwrap().to_str().unwrap());
-        
-                //let something:Value = from_str(HASHMAP).unwrap();
         
         
                 scope.set_extra("inventory", to_value(map.clone()).unwrap());
@@ -174,12 +146,6 @@ fn process_order(cart: &Vec<Item>) -> HttpResponse {
             
             return result;
             
-            
-
-            //return Err(io::Error::new(io::ErrorKind::Other, string).into())
-
-            //return Err(failure::format_err!("Not enough inventory for {:?}", cartitem.id));
-            //panic!("Not enough invetory for {:?}");
 
         } else if map.get(cartitem.id.as_str()).map(|id| id > &0).unwrap_or(false) {
         
@@ -188,7 +154,6 @@ fn process_order(cart: &Vec<Item>) -> HttpResponse {
                     *id -= 1;
                     println!("Success: {:?} was purchased, remaining stock is {:?}", cartitem.id, cartitem.id.as_str());
                 } else {
-                    // handle the error case. maybe:
                     false;
                 }
             
@@ -206,16 +171,13 @@ fn process_order(cart: &Vec<Item>) -> HttpResponse {
 }
 
 
-//fn checkout(body: Json<CheckoutPayload>) -> HttpResponse { 
 
 fn checkout(req: HttpRequest, body: Json<CheckoutPayload>) -> HttpResponse { 
 
    
-    //SETTING SENTRY EVENT CONTEXT//
+ 
     configure_scope(|scope| {
-        //scope.set_tag("my-tag", "my value");
         scope.set_user(Some(User {
-            //id: Some(42.to_string()),
             email: Some((*body.email).to_string()),
             ..Default::default()
         }));
@@ -260,7 +222,7 @@ fn main() {
         .unwrap()
         .run();
 
-        //.resource("/checkout", |r| r.method(http::Method::POST).f(checkout))}).bind("127.0.0.1:3001").unwrap()
+  
         sentry::integrations::panic::register_panic_handler();
 
         
